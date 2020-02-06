@@ -18,10 +18,17 @@ functor VM (VMWord : WORD) = struct
   fun tuppend x (a,b) = (x,a,b)
   fun tupswap (a,b) = (b,a)
 
+  local open Int in
+  fun splitAt (l, i) = loop (i, [], l)
+  and loop (0, ac, l) = (rev ac, l)
+    | loop (_, _, []) = raise Match
+    | loop (i, ac, x::l) = loop (i - 1, x::ac, l)
+  end
+
   fun jmp ([], _, _) = raise Match
     | jmp ((x::xs), y, z) =
       let val full = List.revAppend (z, y)
-      in tuppend xs $ tupswap $ List.splitAt (full, toInt x)
+      in tuppend xs $ tupswap $ splitAt (full, toInt x)
       end
 
   fun unwrap (VInst x) = x
