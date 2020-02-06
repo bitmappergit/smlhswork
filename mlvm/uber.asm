@@ -1,4 +1,5 @@
 0
 1 add
 dup .
-1 jmp
+dup 128 equ
+1 jez

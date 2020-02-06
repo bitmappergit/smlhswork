@@ -32,7 +32,7 @@ fun parse ("drop"::xs)  fin = parse xs (0w00::0w00::fin)
   | parse ("jez"::xs)   fin = parse xs (0w11::0w00::fin)
   | parse ("."::xs)     fin = parse xs (0w12::0w00::fin)
   | parse ("emit"::xs)  fin = parse xs (0w13::0w00::fin)
-  | parse (x::xs)       fin = parse xs ((splitWord (LargeWord.fromString x))@(0w14::0w00::fin))
+  | parse (x::xs)       fin = parse xs ((splitWord (StringCvt.scanString (LargeWord.scan StringCvt.DEC) x))@(0w14::0w00::fin))
   | parse []            fin = fin
 
 fun assemble fin fout = let
