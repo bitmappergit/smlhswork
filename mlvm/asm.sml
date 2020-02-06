@@ -44,6 +44,6 @@ fun assemble fin fout = let
 in BinIO.flushOut outfile end
 
 val _ = let
-  val [fin, fout] = CommandLine.arguments ()
+  val (fin::fout::xs) = CommandLine.arguments ()
 in assemble fin fout end
   handle Bind => print "invalid arguments, please provide an input and output file\n"

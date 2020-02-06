@@ -96,7 +96,7 @@ structure Loader = struct
 
   infix 3 >> << andb orb xorb notb
 
-  fun joinWord [a,b,c,d,e,f,g,h] = let
+  fun joinWord (a,b,c,d,e,f,g,h) = let
     open Word64
   in
     (Word8.toLarge h << 0w00) orb
@@ -123,8 +123,9 @@ structure Loader = struct
     | parse (0w00::0w11::xs) fin = parse xs (VJez::fin)
     | parse (0w00::0w12::xs) fin = parse xs (VPut::fin)
     | parse (0w00::0w13::xs) fin = parse xs (VPutRaw::fin)
-    | parse (0w00::0w14::a::b::c::d::e::f::g::h::xs) fin = parse xs ((VInst (push (joinWord [a,b,c,d,e,f,g,h])))::fin)
+    | parse (0w00::0w14::a::b::c::d::e::f::g::h::xs) fin = parse xs ((VInst (push (joinWord (a,b,c,d,e,f,g,h))))::fin)
     | parse [] fin = List.rev fin
+    | parse _ _ = raise Match
 
   fun toList v = Word8Vector.foldr (op::) [] v
 
@@ -133,10 +134,11 @@ structure Loader = struct
     val binary = BinIO.inputAll infile
     val code = parse (toList binary) []
   in ignore (vm code) end
+    handle Match => print "invalid binary\n"
 end
 
 val _ = let
-  val (fin::_) = CommandLine.arguments ()
+  val fin = hd (CommandLine.arguments ())
 in Loader.run fin end
   handle Bind => print "invalid arguments, please provide an input file\n"
 
