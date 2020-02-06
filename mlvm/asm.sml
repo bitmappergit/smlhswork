@@ -28,7 +28,7 @@ structure Assembler = struct
     | parse "jmp" = "VJmp"
     | parse "jez" = "VJez"
     | parse "show" = "VPut"
-    | parse "." = "VPutRaw"
+    | parse "emit" = "VPutRaw"
     | parse x = "VWord 0w" ^ x
 
   fun asm x = "[" ^ String.concat (inter (List.map parse (tokens isSpace x)) []) ^ "\n]\n" 
