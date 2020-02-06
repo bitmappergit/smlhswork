@@ -1,10 +1,9 @@
-open Word8
+local open Word8 in
 infix 3 >> << andb orb xorb notb
 
 fun splitWord NONE = raise Match
-  | splitWord (SOME num) = let
-    open Word64
-    val x = fromInt num
+  | splitWord (SOME x) = let
+    open LargeWord
 in
    map Word8.fromLarge
      [(x >> 0w00) andb 0wxFF
@@ -33,7 +32,7 @@ fun parse ("drop"::xs)  fin = parse xs (0w00::0w00::fin)
   | parse ("jez"::xs)   fin = parse xs (0w11::0w00::fin)
   | parse ("."::xs)     fin = parse xs (0w12::0w00::fin)
   | parse ("emit"::xs)  fin = parse xs (0w13::0w00::fin)
-  | parse (x::xs)       fin = parse xs ((splitWord (Int.fromString x))@(0w14::0w00::fin))
+  | parse (x::xs)       fin = parse xs ((splitWord (LargeWord.fromString x))@(0w14::0w00::fin))
   | parse []            fin = fin
 
 fun assemble fin fout = let
@@ -44,6 +43,8 @@ fun assemble fin fout = let
 in BinIO.flushOut outfile end
 
 val _ = let
-  val (fin::fout::xs) = CommandLine.arguments ()
+  val [fin] = CommandLine.arguments ()
+  val fout = (hd (String.tokens Char.isPunct fin)) ^ ".bin"
 in assemble fin fout end
-  handle Bind => print "invalid arguments, please provide an input and output file\n"
+  handle Bind => print "invalid arguments, please provide an input file\n"
+end

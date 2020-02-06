@@ -3,7 +3,7 @@ fun f $ x = (f x)
 infix 2 o
 
 structure VM = struct
-  local open Word64 in
+  local open LargeWord in
   datatype inst
     = VInst of (word list -> word list)
     | VWord of word
@@ -97,7 +97,7 @@ structure Loader = struct
   infix 3 >> << andb orb xorb notb
 
   fun joinWord (a,b,c,d,e,f,g,h) = let
-    open Word64
+    open LargeWord
   in
     (Word8.toLarge h << 0w00) orb
     (Word8.toLarge g << 0w08) orb
@@ -141,61 +141,3 @@ val _ = let
   val [fin] = CommandLine.arguments ()
 in Loader.run fin end
   handle Bind => print "invalid arguments, please provide an input file\n"
-
-
-(*
-val insts =
-  [VWord 0w1
-  ,VWord 0w1
-  ,VInst dup2
-  ,VInst add
-  ,VInst dup
-  ,VInst dup
-  ,VPut
-  ,VWord 0w190392490709135
-  ,VInst equ
-  ,VWord 0w2
-  ,VJez]
-
-val ubertest =
-  [VWord 0w0 (*  -- a *)
-  ,VWord 0w1 (*  -- a *)
-  ,VInst add (* a b -- c *)
-  ,VInst dup (* a -- a a *)
-  ,VPut (* a --  *)
-  ,VWord 0w1 (*  -- a *)
-  ,VJmp (* a --  *)
-  ]
-  
-val helloworld =
-  [VWord 0w104
-  ,VPutRaw
-  ,VWord 0w101
-  ,VPutRaw
-  ,VWord 0w108
-  ,VPutRaw
-  ,VWord 0w108
-  ,VPutRaw
-  ,VWord 0w111
-  ,VPutRaw
-  ,VWord 0w44
-  ,VPutRaw
-  ,VWord 0w32
-  ,VPutRaw
-  ,VWord 0w119
-  ,VPutRaw
-  ,VWord 0w111
-  ,VPutRaw
-  ,VWord 0w114
-  ,VPutRaw
-  ,VWord 0w108
-  ,VPutRaw
-  ,VWord 0w100
-  ,VPutRaw
-  ,VWord 0w10
-  ,VPutRaw
-  ]
-
-(* val _ = vm insts *)
-val _ = vm helloworld
-*)
