@@ -1,4 +1,4 @@
 0
 1 add
-dup show
+dup .
 1 jmp

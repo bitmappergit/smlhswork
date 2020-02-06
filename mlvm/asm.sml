@@ -1,47 +1,49 @@
-structure Assembler = struct
-  local
-    open String
-    open Char
-  in
-  datatype inst
-    = VInst of (word list -> word list)
-    | VInt of int
-    | VJmp
-    | VJnz
-    | VPut
+open Word8
+infix 3 >> << andb orb xorb notb
 
-  fun inter [a,b] lst = (lst@[a^"\n,",b])
-    | inter (a::b::xs) lst = inter xs (lst@[a^"\n,",b^"\n,"])
-    | inter [x] lst = (lst@[x])
-    | inter _ _ = raise Match
-
-  fun parse "drop" = "VInst drop"
-    | parse "equ" = "VInst equ"
-    | parse "dup" = "VInst dup"
-    | parse "dup2" = "VInst dup2"
-    | parse "swap" = "VInst swap"
-    | parse "rot" = "VInst rot"
-    | parse "add" = "VInst add"
-    | parse "sub" = "VInst sub"
-    | parse "store" = "VInst store"
-    | parse "load" = "VInst load"
-    | parse "jmp" = "VJmp"
-    | parse "jez" = "VJez"
-    | parse "show" = "VPut"
-    | parse "emit" = "VPutRaw"
-    | parse x = "VWord 0w" ^ x
-
-  fun asm x = "[" ^ String.concat (inter (List.map parse (tokens isSpace x)) []) ^ "\n]\n" 
-  end
+fun splitWord NONE = raise Match
+  | splitWord (SOME num) = let
+    open Word64
+    val x = fromInt num
+in
+   map Word8.fromLarge
+     [(x >> 0w00) andb 0wxFF
+     ,(x >> 0w08) andb 0wxFF
+     ,(x >> 0w16) andb 0wxFF
+     ,(x >> 0w24) andb 0wxFF
+     ,(x >> 0w32) andb 0wxFF
+     ,(x >> 0w40) andb 0wxFF
+     ,(x >> 0w48) andb 0wxFF
+     ,(x >> 0w56) andb 0wxFF
+     ]
 end
 
-fun main () = let
-  val inputfile = TextIO.openIn (hd (CommandLine.arguments ()))
-  val outputfile = TextIO.openOut (hd (tl (CommandLine.arguments ())))
-  val code = TextIO.input inputfile
-  val binary = Assembler.asm code
-  val _ = TextIO.output (outputfile, binary)
-in TextIO.flushOut outputfile
-end handle Match => print "unknown directive\n"
 
-val _ = main ()
+fun parse ("drop"::xs)  fin = parse xs (0w00::0w00::fin)
+  | parse ("equ"::xs)   fin = parse xs (0w01::0w00::fin)
+  | parse ("dup"::xs)   fin = parse xs (0w02::0w00::fin)
+  | parse ("dup2"::xs)  fin = parse xs (0w03::0w00::fin)
+  | parse ("swap"::xs)  fin = parse xs (0w04::0w00::fin)
+  | parse ("rot"::xs)   fin = parse xs (0w05::0w00::fin)
+  | parse ("add"::xs)   fin = parse xs (0w06::0w00::fin)
+  | parse ("sub"::xs)   fin = parse xs (0w07::0w00::fin)
+  | parse ("store"::xs) fin = parse xs (0w08::0w00::fin)
+  | parse ("load"::xs)  fin = parse xs (0w09::0w00::fin)
+  | parse ("jmp"::xs)   fin = parse xs (0w10::0w00::fin)
+  | parse ("jez"::xs)   fin = parse xs (0w11::0w00::fin)
+  | parse ("."::xs)     fin = parse xs (0w12::0w00::fin)
+  | parse ("emit"::xs)  fin = parse xs (0w13::0w00::fin)
+  | parse (x::xs)       fin = parse xs ((splitWord (Int.fromString x))@(0w14::0w00::fin))
+  | parse []            fin = fin
+
+fun assemble fin fout = let
+  val infile = TextIO.openIn fin
+  val outfile = BinIO.openOut fout
+  val binary = rev (parse (String.tokens Char.isSpace (TextIO.inputAll infile)) [])
+  val _ = app (fn x => BinIO.output1 (outfile, x)) binary
+in BinIO.flushOut outfile end
+
+val _ = let
+  val [fin, fout] = CommandLine.arguments ()
+in assemble fin fout end
+  handle Bind => print "invalid arguments, please provide an input and output file\n"

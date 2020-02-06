@@ -2,8 +2,8 @@ infixr 0 $
 fun f $ x = (f x)
 infix 2 o
 
-functor VM (VMWord : WORD) = struct
-  local open VMWord in
+structure VM = struct
+  local open Word64 in
   datatype inst
     = VInst of (word list -> word list)
     | VWord of word
@@ -75,7 +75,7 @@ functor VM (VMWord : WORD) = struct
   fun reduct (a, (VJmp::xs), fin) = reduct $ jmp (a, xs, VJmp::fin)
     | reduct (a, (VJez::xs), fin) = jez (a, xs, fin)
     | reduct (a::cs, (VPut::xs), fin) = (println $ fmt StringCvt.DEC a; reduct (cs, xs, VPut::fin))
-    | reduct (a::cs, (VPutRaw::xs), fin) = (print o Char.toString o Char.chr o toInt $ a; reduct (cs, xs, VPutRaw::fin))
+    | reduct (a::cs, (VPutRaw::xs), fin) = (TextIO.output1 (TextIO.stdOut, Char.chr o toInt $ a); reduct (cs, xs, VPutRaw::fin))
     | reduct (a, (VWord x)::xs, fin) = reduct (push x a, xs, (VWord x)::fin)
     | reduct (a, (x::xs), fin) = reduct (unwrap x $ a, xs, x::fin)
     | reduct (a, [], fin) = (a, fin)
@@ -89,12 +89,59 @@ functor VM (VMWord : WORD) = struct
   end
 end
 
-structure VM8 = VM (Word8)
-structure VM32 = VM (Word32)
-structure VM64 = VM (LargeWord)
+structure Loader = struct
+  open Word8
+  open VM
+  open BinIO
 
-open VM64
+  infix 3 >> << andb orb xorb notb
 
+  fun joinWord [a,b,c,d,e,f,g,h] = let
+    open Word64
+  in
+    (Word8.toLarge h << 0w00) orb
+    (Word8.toLarge g << 0w08) orb
+    (Word8.toLarge f << 0w16) orb
+    (Word8.toLarge e << 0w24) orb
+    (Word8.toLarge d << 0w32) orb
+    (Word8.toLarge c << 0w40) orb
+    (Word8.toLarge b << 0w48) orb
+    (Word8.toLarge a << 0w56)
+  end
+
+  fun parse (0w00::0w00::xs) fin = parse xs ((VInst drop)::fin)
+    | parse (0w00::0w01::xs) fin = parse xs ((VInst equ)::fin)
+    | parse (0w00::0w02::xs) fin = parse xs ((VInst dup)::fin)
+    | parse (0w00::0w03::xs) fin = parse xs ((VInst dup2)::fin)
+    | parse (0w00::0w04::xs) fin = parse xs ((VInst swap)::fin)
+    | parse (0w00::0w05::xs) fin = parse xs ((VInst rot)::fin)
+    | parse (0w00::0w06::xs) fin = parse xs ((VInst add)::fin)
+    | parse (0w00::0w07::xs) fin = parse xs ((VInst sub)::fin)
+    | parse (0w00::0w08::xs) fin = parse xs ((VInst store)::fin)
+    | parse (0w00::0w09::xs) fin = parse xs ((VInst load)::fin)
+    | parse (0w00::0w10::xs) fin = parse xs (VJmp::fin)
+    | parse (0w00::0w11::xs) fin = parse xs (VJez::fin)
+    | parse (0w00::0w12::xs) fin = parse xs (VPut::fin)
+    | parse (0w00::0w13::xs) fin = parse xs (VPutRaw::fin)
+    | parse (0w00::0w14::a::b::c::d::e::f::g::h::xs) fin = parse xs ((VInst (push (joinWord [a,b,c,d,e,f,g,h])))::fin)
+    | parse [] fin = List.rev fin
+
+  fun toList v = Word8Vector.foldr (op::) [] v
+
+  fun run fin = let
+    val infile = BinIO.openIn fin
+    val binary = BinIO.inputAll infile
+    val code = parse (toList binary) []
+  in ignore (vm code) end
+end
+
+val _ = let
+  val (fin::_) = CommandLine.arguments ()
+in Loader.run fin end
+  handle Bind => print "invalid arguments, please provide an input file\n"
+
+
+(*
 val insts =
   [VWord 0w1
   ,VWord 0w1
@@ -117,6 +164,36 @@ val ubertest =
   ,VWord 0w1 (*  -- a *)
   ,VJmp (* a --  *)
   ]
+  
+val helloworld =
+  [VWord 0w104
+  ,VPutRaw
+  ,VWord 0w101
+  ,VPutRaw
+  ,VWord 0w108
+  ,VPutRaw
+  ,VWord 0w108
+  ,VPutRaw
+  ,VWord 0w111
+  ,VPutRaw
+  ,VWord 0w44
+  ,VPutRaw
+  ,VWord 0w32
+  ,VPutRaw
+  ,VWord 0w119
+  ,VPutRaw
+  ,VWord 0w111
+  ,VPutRaw
+  ,VWord 0w114
+  ,VPutRaw
+  ,VWord 0w108
+  ,VPutRaw
+  ,VWord 0w100
+  ,VPutRaw
+  ,VWord 0w10
+  ,VPutRaw
+  ]
 
-val _ = vm insts
-val _ = vm ubertest
+(* val _ = vm insts *)
+val _ = vm helloworld
+*)
