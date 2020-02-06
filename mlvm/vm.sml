@@ -1,24 +1,27 @@
+infixr 0 $
+fun f $ x = (f x)
+infix 2 o
+
 functor VM (VMWord : WORD) = struct
   local open VMWord in
   datatype inst
     = VInst of (word list -> word list)
-    | VInt of int
     | VWord of word
     | VJmp
     | VJez
     | VPut
+    | VPutRaw
 
-  val &< = fromInt
-  val &> = toInt
+  val mem = Array.array (256, fromInt 0)
 
-  val mem = Array.array (256, &<0)
-
-  fun println x = print (x ^ "\n")
+  fun println x = print $ x ^ "\n"
+  fun tuppend x (a,b) = (x,a,b)
+  fun tupswap (a,b) = (b,a)
 
   fun jmp [] _ _ = raise Match
     | jmp (x::xs) y z =
       let val full = List.revAppend (z, y)
-      in (xs, List.drop (full, toInt (x - &<1)), List.take (full, toInt (x - &<1)))
+      in tuppend xs $ tupswap $ List.splitAt (full, toInt x)
       end
 
   fun unwrap (VInst x) = x
@@ -32,9 +35,10 @@ functor VM (VMWord : WORD) = struct
 
   fun push x xs = (x::xs)
 
-  fun equ (a::b::xs) = if (compare (a, b) = EQUAL)
-                       then (push (&<1) xs)
-                       else (push (&<0) xs)
+  fun equ (a::b::xs) =
+      if compare (a, b) = EQUAL
+      then (push $ fromInt 1) xs
+      else (push $ fromInt 0) xs
     | equ _ = raise Match
 
   fun dup (x::xs) = (x::x::xs)
@@ -55,22 +59,24 @@ functor VM (VMWord : WORD) = struct
   fun sub (a::b::xs) = ((b - a)::xs)
     | sub _ = raise Match
 
-  fun store (a::b::xs) = (Array.update (mem, &>b, a); xs)
+  fun store (a::b::xs) = (Array.update (mem, toInt b, a); xs)
     | store _ = raise Match
 
-  fun load (x::xs) = ((Array.sub (mem, &>x))::xs)
+  fun load (x::xs) = ((Array.sub (mem, toInt x))::xs)
     | load _ = raise Match
-
-  fun reduct (a::cs, (VJmp::xs), fin) = reduct (jmp cs xs (VJmp::fin))
-    | reduct (a::b::cs, (VJez::xs), fin) = if (compare (b, &<0) = EQUAL)
-                                           then reduct (jmp (a::cs) xs (VJez::fin))
-                                           else reduct (cs, xs, (VJez::fin))
-    | reduct (a::cs, (VPut::xs), fin) = (println (fmt StringCvt.DEC a); reduct (cs, xs, VPut::fin))
-    | reduct (a::cs, (VPutRaw::xs), fin) = (print (Char.chr a); reduct (cs, xs, VPutRaw::fin))
-    | reduct (a, ((VInt x)::xs), fin) = reduct (push (&<x) a, xs, ((VInt x)::fin))
+  
+  fun reduct (a::cs, (VJmp::xs), fin) = reduct $ jmp cs xs (VJmp::fin)
+    | reduct (a, (VJez::xs), fin) = jez (a, xs, fin)
+    | reduct (a::cs, (VPut::xs), fin) = (println $ fmt StringCvt.DEC a; reduct (cs, xs, VPut::fin))
+    | reduct (a::cs, (VPutRaw::xs), fin) = (print o Char.toString o Char.chr o toInt $ a; reduct (cs, xs, VPutRaw::fin))
     | reduct (a, ((VWord x)::xs), fin) = reduct (push x a, xs, ((VWord x)::fin))
-    | reduct (a, (x::xs), fin) = reduct ((unwrap x) a, xs, (x::fin))
+    | reduct (a, (x::xs), fin) = reduct (unwrap x $ a, xs, (x::fin))
     | reduct (a, [], fin) = (a, fin)
+  and jez (a::b::cs, xs, fin) =
+      if compare (b, fromInt 0) = EQUAL
+      then reduct $ jmp (a::cs) xs (VJez::fin)
+      else reduct (cs, xs, (VJez::fin))
+    | jez _ = raise Match
 
   fun vm code = reduct ([], code, [])
   end
@@ -81,7 +87,29 @@ structure VM32 = VM (Word32)
 structure VM64 = VM (LargeWord)
 
 open VM64
+
 val insts =
-[VWord 0w1,VWord 0w1,VInst dup2,VInst add,VPut,VInst dup,VWord 0w190392490709135,VInst equ,VInt 3,VJez]
+  [VWord 0w1
+  ,VWord 0w1
+  ,VInst dup2
+  ,VInst add
+  ,VInst dup
+  ,VInst dup
+  ,VPut
+  ,VWord 0w190392490709135
+  ,VInst equ
+  ,VWord 0w2
+  ,VJez]
+
+val ubertest =
+  [VWord 0w0
+  ,VWord 0w1
+  ,VInst add
+  ,VInst dup
+  ,VPut
+  ,VWord 0w1
+  ,VJmp
+  ]
 
 val _ = vm insts
+val _ = vm ubertest
