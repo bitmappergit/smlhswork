@@ -26,7 +26,7 @@ functor VM (VMWord : WORD) = struct
   end
 
   fun jmp ([], _, _) = raise Match
-    | jmp ((x::xs), y, z) =
+    | jmp (x::xs, y, z) =
       let val full = List.revAppend (z, y)
       in tuppend xs $ tupswap $ splitAt (full, toInt x)
       end
