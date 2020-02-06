@@ -18,8 +18,8 @@ functor VM (VMWord : WORD) = struct
   fun tuppend x (a,b) = (x,a,b)
   fun tupswap (a,b) = (b,a)
 
-  fun jmp [] _ _ = raise Match
-    | jmp (x::xs) y z =
+  fun jmp ([], _, _) = raise Match
+    | jmp ((x::xs), y, z) =
       let val full = List.revAppend (z, y)
       in tuppend xs $ tupswap $ List.splitAt (full, toInt x)
       end
@@ -65,17 +65,17 @@ functor VM (VMWord : WORD) = struct
   fun load (x::xs) = ((Array.sub (mem, toInt x))::xs)
     | load _ = raise Match
   
-  fun reduct (a::cs, (VJmp::xs), fin) = reduct $ jmp cs xs (VJmp::fin)
+  fun reduct (a, (VJmp::xs), fin) = reduct $ jmp (a, xs, VJmp::fin)
     | reduct (a, (VJez::xs), fin) = jez (a, xs, fin)
     | reduct (a::cs, (VPut::xs), fin) = (println $ fmt StringCvt.DEC a; reduct (cs, xs, VPut::fin))
     | reduct (a::cs, (VPutRaw::xs), fin) = (print o Char.toString o Char.chr o toInt $ a; reduct (cs, xs, VPutRaw::fin))
-    | reduct (a, ((VWord x)::xs), fin) = reduct (push x a, xs, ((VWord x)::fin))
-    | reduct (a, (x::xs), fin) = reduct (unwrap x $ a, xs, (x::fin))
+    | reduct (a, (VWord x)::xs, fin) = reduct (push x a, xs, (VWord x)::fin)
+    | reduct (a, (x::xs), fin) = reduct (unwrap x $ a, xs, x::fin)
     | reduct (a, [], fin) = (a, fin)
   and jez (a::b::cs, xs, fin) =
       if compare (b, fromInt 0) = EQUAL
-      then reduct $ jmp (a::cs) xs (VJez::fin)
-      else reduct (cs, xs, (VJez::fin))
+      then reduct $ jmp (a::cs, xs, VJez::fin)
+      else reduct (cs, xs, VJez::fin)
     | jez _ = raise Match
 
   fun vm code = reduct ([], code, [])
@@ -102,13 +102,13 @@ val insts =
   ,VJez]
 
 val ubertest =
-  [VWord 0w0
-  ,VWord 0w1
-  ,VInst add
-  ,VInst dup
-  ,VPut
-  ,VWord 0w1
-  ,VJmp
+  [VWord 0w0 (*  -- a *)
+  ,VWord 0w1 (*  -- a *)
+  ,VInst add (* a b -- c *)
+  ,VInst dup (* a -- a a *)
+  ,VPut (* a --  *)
+  ,VWord 0w1 (*  -- a *)
+  ,VJmp (* a --  *)
   ]
 
 val _ = vm insts
