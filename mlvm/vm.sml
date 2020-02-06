@@ -138,7 +138,7 @@ structure Loader = struct
 end
 
 val _ = let
-  val fin = hd (CommandLine.arguments ())
+  val [fin] = CommandLine.arguments ()
 in Loader.run fin end
   handle Bind => print "invalid arguments, please provide an input file\n"
 
