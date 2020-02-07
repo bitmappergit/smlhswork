@@ -18,8 +18,7 @@ in
 end
 
 
-fun parse ("drop"::xs)  fin = parse xs (0w00::0w00::fin)
-  | parse ("equ"::xs)   fin = parse xs (0w01::0w00::fin)
+fun parse ("equ"::xs)   fin = parse xs (0w01::0w00::fin)
   | parse ("dup"::xs)   fin = parse xs (0w02::0w00::fin)
   | parse ("dup2"::xs)  fin = parse xs (0w03::0w00::fin)
   | parse ("swap"::xs)  fin = parse xs (0w04::0w00::fin)
@@ -32,7 +31,10 @@ fun parse ("drop"::xs)  fin = parse xs (0w00::0w00::fin)
   | parse ("jez"::xs)   fin = parse xs (0w11::0w00::fin)
   | parse ("."::xs)     fin = parse xs (0w12::0w00::fin)
   | parse ("emit"::xs)  fin = parse xs (0w13::0w00::fin)
-  | parse (x::xs)       fin = parse xs ((splitWord (StringCvt.scanString (LargeWord.scan StringCvt.DEC) x))@(0w14::0w00::fin))
+  | parse ("drop"::xs)  fin = parse xs (0w14::0w00::fin)
+  | parse ("jnz"::xs)   fin = parse xs (0w15::0w00::fin)
+  | parse ("ssize"::xs) fin = parse xs (0w16::0w00::fin)
+  | parse (x::xs)       fin = parse xs ((splitWord (StringCvt.scanString (LargeWord.scan StringCvt.DEC) x))@(0w00::0w00::fin))
   | parse []            fin = fin
 
 fun assemble fin fout = let
