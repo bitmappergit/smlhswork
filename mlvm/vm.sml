@@ -76,17 +76,17 @@ structure VM = struct
   fun ssize xs = ((fromInt (length xs))::xs)
   
   fun reduct (a, (VJmp::xs), fin) = reduct $ jmp (a, xs, VJmp::fin)
-    | reduct (a, (VJez::xs), fin) = jif (a, xs, fin, (fn x => compare (x, 0w0) = EQUAL))
-    | reduct (a, (VJnz::xs), fin) = jif (a, xs, fin, (fn x => not (compare (x, 0w0) = EQUAL)))
+    | reduct (a, (VJez::xs), fin) = jif (a, xs, fin, (fn x => x = 0w0), VJez)
+    | reduct (a, (VJnz::xs), fin) = jif (a, xs, fin, (fn x => not (x = 0w0)), VJnz)
     | reduct (a::cs, (VPut::xs), fin) = (println $ fmt StringCvt.DEC a; reduct (cs, xs, VPut::fin))
     | reduct (a::cs, (VPutRaw::xs), fin) = (TextIO.output1 (TextIO.stdOut, Char.chr o toInt $ a); reduct (cs, xs, VPutRaw::fin))
     | reduct (a, (VWord x)::xs, fin) = reduct (push x a, xs, (VWord x)::fin)
     | reduct (a, (x::xs), fin) = reduct (unwrap x $ a, xs, x::fin)
     | reduct (a, [], fin) = (a, fin)
-  and jif (a::b::cs, xs, fin, cmp) =
+  and jif (a::b::cs, xs, fin, cmp, typ) =
       if cmp b
-      then reduct $ jmp (a::cs, xs, VJez::fin)
-      else reduct (cs, xs, VJez::fin)
+      then reduct $ jmp (a::cs, xs, typ::fin)
+      else reduct (cs, xs, typ::fin)
     | jif _ = raise Match
 
   fun vm code = reduct ([], code, [])
