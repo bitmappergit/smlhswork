@@ -73,7 +73,7 @@ structure VM = struct
   fun load (x::xs) = ((Array.sub (mem, toInt x))::xs)
     | load _ = raise Match
   
-  fun ssize xs = ((toInt (length xs))::xs)
+  fun ssize xs = ((fromInt (length xs))::xs)
   
   fun reduct (a, (VJmp::xs), fin) = reduct $ jmp (a, xs, VJmp::fin)
     | reduct (a, (VJez::xs), fin) = jif (a, xs, fin, (fn x => compare (x, 0w0) = EQUAL))
