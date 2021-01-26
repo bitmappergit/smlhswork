@@ -1,8 +1,6 @@
 datatype result = T | F | N
 
-fun isWs (SOME x) = (case (Char.isSpace x) of
-                       true  => T
-                     | false => F)
+fun isWs (SOME x) = if Char.isSpace x then T else F
   | isWs (NONE) = N
 
 fun isNl (SOME #"\n") = T
